@@ -1,7 +1,11 @@
+import os
 import pandas as pd
 import numpy as np
 
-def load_and_clean(path="../data/household_power_consumption.txt"):
+def load_and_clean(path=None):
+    if path is None:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(script_dir, "..", "data", "household_power_consumption.txt")
     df = pd.read_csv(path, sep=";", na_values=["?"], low_memory=False)
     df["datetime"] = pd.to_datetime(df["Date"] + " " + df["Time"], format="%d/%m/%Y %H:%M:%S")
     df = df.drop(columns=["Date", "Time"]).set_index("datetime")
@@ -41,8 +45,8 @@ def add_time_features(df):
     df["month"] = df.index.month
     df["season"] = df["month"] % 12 // 3
 
-    df["rolling_mean_24h"] = df["Global_active_power"].rolling(24, min_periods=1).mean()
-    df["rolling_mean_7d"] = df["Global_active_power"].rolling(24*7, min_periods=1).mean()
+    df["rolling_mean_24h"] = df["Global_active_power"].shift(1).rolling(24, min_periods=1).mean()
+    df["rolling_mean_7d"] = df["Global_active_power"].shift(1).rolling(24*7, min_periods=1).mean()
     df["lag_1h"] = df["Global_active_power"].shift(1)
     df["lag_24h"] = df["Global_active_power"].shift(24)
     df["lag_168h"] = df["Global_active_power"].shift(168)
@@ -53,5 +57,7 @@ if __name__ == "__main__":
     raw = load_and_clean()
     hourly = resample_hourly(raw)
     featured = add_time_features(hourly)
-    featured.to_csv("../data/cleaned_hourly.csv")
-    print(f"Saved {len(featured)} rows to data/cleaned_hourly.csv")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(script_dir, "..", "data", "cleaned_hourly.csv")
+    featured.to_csv(output_path)
+    print(f"Saved {len(featured)} rows to {output_path}")
